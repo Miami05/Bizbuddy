@@ -1,0 +1,12 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2>Select a country</h2>
+<ul>
+	{% for country in countries %}
+	<li>
+		<a href="{{ url_for('main.country_detail', country_id=country.id) }}"> {{ country.name }}</a>
+	</li>
+	{% endfor %}
+</ul>
+{% endblock %}

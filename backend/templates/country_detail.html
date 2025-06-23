@@ -1,0 +1,7 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2> {{ country.name }}</h2>
+<h2> {{ country.startup_tip }}</h2>
+<a href="{{ url_for('main.index') }}">← Back</a>
+{% endblock %}
