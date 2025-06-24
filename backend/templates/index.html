@@ -1,12 +1,41 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<h2>Select a country</h2>
-<ul>
-	{% for country in countries %}
-	<li>
-		<a href="{{ url_for('main.country_detail', country_id=country.id) }}"> {{ country.name }}</a>
-	</li>
-	{% endfor %}
-</ul>
+<h2 class="text-2xl font-bold mb-6">🌍 Select Your Country</h2>
+<div x-data="countrySearch()" class="relative">
+	<input type="text" x-model="query" @input.debounce.300ms="searchcountry"
+	placeholder="Type to seach country..." class="p-3 w-full border rounded">
+	<ul x-show="result.length" class="absolute z-10 bg-white border w-full mt-1 rounder shadow max-h-60 overflow-y-auto">
+		<template x-for="country in result" :key="country.id">
+			<li>
+				<a :href="'/country/' + country.id" class="flex items-center gap-2 p-2 hover:bf gray">
+					<img :src"country.flag" alt="Flag" class="w-5 h-4 object-cover rounded"/>
+					<span x-text="country.name"></span>
+				</a>
+			</li>
+		</template>
+	</ul>
+</div>
+<script>
+	function countrySearch() {
+		return {
+			query: '',
+			result: [],
+			loading: false,
+			searchcountry() {
+				if (this.query.length < 2) {
+					this.result = [];
+					return ;
+				}
+			}
+			this.loading = true;
+			fetch(`/api/countries?q=${this.query}`)
+			.then(res => res.json())
+			.then(data => {
+				this.result = data;
+				this.loading = false;
+			})
+		}
+	}
+</script>
 {% endblock %}

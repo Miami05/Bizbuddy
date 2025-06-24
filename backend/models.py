@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
 
 db = SQLAlchemy()
 
@@ -21,3 +22,23 @@ class ChecklistStep(db.Model):
     step_number = db.Column(db.Integer)
     content = db.Column(db.String(255))
     country_id = db.Column(db.Integer, db.ForeignKey("country.id"))
+
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user = db.Column(db.String(80), unique=True)
+    email = db.Column(db.String(120), unique=True)
+    password_hash = db.Column(db.String(128))
+
+
+class ChecklistProgress(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    step_id = db.Column(db.Integer, db.ForeignKey("checklist_step.id"))
+    completed = db.Column(db.Boolean, default=False)
+
+
+class Bookmark(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    tip_id = db.Column(db.Integer, db.ForeignKey("tip.id"))
