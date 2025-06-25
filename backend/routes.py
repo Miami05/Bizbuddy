@@ -3,7 +3,9 @@ from models import db, Country, Tip, ChecklistStep, ChecklistProgress, Bookmark
 from flask_login import login_required, current_user
 import cohere
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 main = Blueprint("main", __name__)
 co = cohere.Client(os.getenv("COHERE_API_KEY"))
 
@@ -128,3 +130,5 @@ Format it in a numbered list.
     response = co.generate(
         model="command", prompt=prompt, max_tokens=300, temperature=0.7
     )
+    suggestion = response.generations[0].text.strip()
+    return jsonify({"suggestion": suggestion})
