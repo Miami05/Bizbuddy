@@ -1,8 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from sqlalchemy.sql.functions import user
 from models import db, User, Bookmark, Tip, Country, ChecklistProgress, ChecklistStep
 from flask_login import login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash
 
 auth = Blueprint("auth", __name__)
 
@@ -24,7 +23,7 @@ def login():
         ):
             login_user(user)
             flash("Login successful!")
-            return redirect(url_for("main.index"))
+            return redirect(url_for("main.home"))
         else:
             flash("Invalid email or password")
             return redirect(url_for("auth.login"))
@@ -45,11 +44,11 @@ def register():
         if password != confirm_password:
             flash("Password do not match")
             return redirect(url_for("auth.register"))
-        if User.query.filter_by(user=username).first():
+        if User.query.filter_by(email=email).first():
             flash("Email already registered")
             return redirect(url_for("auth.register"))
         if User.query.filter_by(user=username).first():
-            flash("Username already token")
+            flash("Username already taken")
             return redirect(url_for("auth.register"))
         new_user = User()
         new_user.user = username
@@ -59,7 +58,7 @@ def register():
         db.session.commit()
         flash("Registration successful! Please login.")
         return redirect(url_for("auth.login"))
-    return render_template("login.html")
+    return render_template("register.html")
 
 
 # --- Logout ---
@@ -82,3 +81,13 @@ def profile():
         .filter(Bookmark.user_id == current_user.id)
         .all()
     )
+    progress = (
+        db.session.query(ChecklistProgress, ChecklistStep, Country)
+        .join(ChecklistStep, ChecklistProgress.step_id == ChecklistStep.id)
+        .join(Country, ChecklistStep.country_id == Country.id)
+        .filter(
+            ChecklistProgress.user_id == current_user.id, ChecklistProgress.completed
+        )
+        .all()
+    )
+    return render_template("profile.html", bookmarks=bookmarks, progress=progress)

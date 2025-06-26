@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from models import db, Country, Tip, ChecklistStep, ChecklistProgress, Bookmark
 from flask_login import login_required, current_user
 import cohere
@@ -10,9 +10,15 @@ main = Blueprint("main", __name__)
 co = cohere.Client(os.getenv("COHERE_API_KEY"))
 
 
-# --- Homepage: Searchable country selector ---
+# --- Login redirect at root ---
 @main.route("/")
 def index():
+    return redirect(url_for("auth.login"))
+
+
+# --- Homepage: Searchable country selector ---
+@main.route("/home")
+def home():
     return render_template("index.html")
 
 
@@ -86,49 +92,61 @@ def save_progress():
     return jsonify({"status": "ok"})
 
 
-# --- API: Bookmark Tip ---
-@main.route("/api/bookmark", methods=["POST"])
-@login_required
-def bookmark_tip():
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No JSON data provided"}), 400
-
-    tip_id = data.get("tip_id")
-    if not tip_id:
-        return jsonify({"error": "tip_id is required"}), 400
-    existing_bookmark = Bookmark.query.filter_by(
-        user_id=current_user.id, tip_id=tip_id
-    ).first()
-    if existing_bookmark:
-        return jsonify({"message": "Already bookmarked"}), 200
-    bookmark = Bookmark()
-    bookmark.user_id = current_user.id
-    bookmark.tip_id = tip_id
-    db.session.add(bookmark)
-    db.session.commit()
-    return jsonify({"message": "Bookmark added successfully"}), 201
-
-
-# --- API: Cohere AI suggestions ---
+# --- AI suggestions ---
 @main.route("/api/suggest", methods=["POST"])
 def suggest_ai():
     data = request.json
     if not data:
         return jsonify({"error": "No JSON provided"}), 400
+
     country = data.get("country")
     keyword = data.get("keyword")
+
+    # Enhanced prompt with better structure and instructions
     prompt = f"""
-You are a startup assistand
+You are an expert startup consultant specializing in {country} business regulations and startup guidance.
 
-The user is in {country} and wants to know how to handle '{keyword}'.
-Give a clear step-by-step startup guide (4–6 steps), each step with optional links.
-Finish with one local event or program to join, and a one-line conclusion.
+A startup founder in {country} needs specific guidance on: "{keyword}"
 
-Format it in a numbered list.
-	"""
-    response = co.generate(
-        model="command", prompt=prompt, max_tokens=300, temperature=0.7
-    )
-    suggestion = response.generations[0].text.strip()
-    return jsonify({"suggestion": suggestion})
+Please provide a comprehensive, actionable guide with the following structure:
+
+ACTIONABLE STEPS (4-6 steps):
+Each step should be:
+- Specific and actionable
+- Include estimated timeframes where relevant
+- Mention specific forms, websites, or authorities
+- Include approximate costs if applicable
+
+NETWORKING & RESOURCES (3-5 opportunities):
+- List specific local programs, accelerators, networking events, or government initiatives in {country}
+- Include organization names and brief descriptions of what they offer
+- Provide website URLs or contact information where available
+- Mention any application deadlines or requirements
+
+USEFUL LINKS & RESOURCES:
+- Government websites for official registration/licensing
+- Key regulatory bodies or departments
+- Funding databases or grant portals specific to {country}
+- Professional associations or industry groups
+
+CONCLUSION:
+- One concise sentence summarizing the key takeaway
+
+Format your response clearly with proper spacing and structure. Be specific about {country} regulations and requirements. Focus on practical, implementable advice rather than general guidance. Include actual website URLs and contact details wherever possible.
+"""
+
+    try:
+        response = co.generate(
+            model="command",
+            prompt=prompt,
+            max_tokens=1000,  # Increased for more detailed responses
+            temperature=0.5,  # Slightly lower for more consistent, factual responses
+            stop_sequences=["\n\n---"],  # Optional: to prevent overly long responses
+        )
+        suggestion = response.generations[0].text.strip()
+        return jsonify({"suggestion": suggestion})
+
+    except Exception as e:
+        return jsonify(
+            {"error": "AI service temporarily unavailable", "details": str(e)}
+        ), 500

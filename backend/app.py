@@ -16,7 +16,7 @@ login_manager.login_message = "Please log in to access this page"
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder="../static/", static_url_path="/static")
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
